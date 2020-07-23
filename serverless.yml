@@ -1,0 +1,51 @@
+service:
+  name: serverless-udagram-app
+
+plugins:
+  - serverless-webpack
+provider:
+  name: aws
+  runtime: nodejs12.x
+  stage: '${opt:stage,''dev2''}'
+  region: '${opt:region, ''us-west-2''}'
+
+  environment:
+    GROUPS_TABLE: 'Groups-${self:provider.stage}'
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - 'dynamodb:Scan'
+        - 'dynamodb:PutItem'
+      Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.GROUPS_TABLE}
+
+functions:
+  GetGroups:
+    handler: src/lamda/http/getGroups.handler
+    events:
+      - http:
+        method: get
+        path: groups
+        cors: true
+  
+  CreateGroups:
+    handler: src/lamda/http/createGroup.handler
+    events:
+      - http:
+        method: post
+        path: groups
+        cors: true
+
+resources:
+  Resources:
+    GroupsDynamoDBTable:
+      Type: 'AWS::DynamoDB::Table'
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TableName: '${self:provider.environment.GROUPS_TABLE}'
